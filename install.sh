@@ -41,6 +41,23 @@ else
     echo "✓ Installed youtube-transcript skill"
 fi
 
+# Install article-extractor skill
+if [ -d "$SKILLS_DIR/article-extractor" ]; then
+    echo "⚠️  article-extractor skill already exists"
+    read -p "   Overwrite? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "$SKILLS_DIR/article-extractor"
+        cp -r "$SCRIPT_DIR/article-extractor" "$SKILLS_DIR/"
+        echo "   ✓ Updated article-extractor skill"
+    else
+        echo "   ⏭️  Skipped article-extractor skill"
+    fi
+else
+    cp -r "$SCRIPT_DIR/article-extractor" "$SKILLS_DIR/"
+    echo "✓ Installed article-extractor skill"
+fi
+
 # Install ship-learn-next skill
 if [ -d "$SKILLS_DIR/ship-learn-next" ]; then
     echo "⚠️  ship-learn-next skill already exists"
@@ -66,6 +83,7 @@ echo "Skills installed to: $SKILLS_DIR"
 echo ""
 echo "📚 Available skills:"
 echo "  - youtube-transcript: Download YouTube transcripts"
+echo "  - article-extractor: Extract clean article content"
 echo "  - ship-learn-next: Turn content into action plans"
 echo ""
 echo "🚀 Usage:"

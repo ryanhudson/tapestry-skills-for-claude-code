@@ -19,7 +19,23 @@ Download and clean YouTube video transcripts with automatic deduplication and re
 - Extract content from tutorials
 - Archive important talks/interviews
 
-### 2. Ship-Learn-Next Action Planner
+### 2. Article Extractor
+Extract clean, readable content from web articles and blog posts, removing ads, navigation, and clutter.
+
+**Features:**
+- Uses Mozilla Readability or trafilatura for extraction
+- Removes ads, navigation, and newsletter signups
+- Saves as clean plain text
+- Uses article title for filename
+- Multiple extraction methods with automatic fallback
+
+**Use cases:**
+- Save articles for offline reading
+- Extract tutorial content
+- Archive important blog posts
+- Get clean text without distractions
+
+### 3. Ship-Learn-Next Action Planner
 Transform passive learning content (transcripts, articles, tutorials) into actionable implementation plans using the Ship-Learn-Next framework.
 
 **Features:**
@@ -59,6 +75,7 @@ mkdir -p ~/.claude/skills
 
 # Copy skills
 cp -r youtube-transcript ~/.claude/skills/
+cp -r article-extractor ~/.claude/skills/
 cp -r ship-learn-next ~/.claude/skills/
 ```
 
@@ -70,6 +87,7 @@ mkdir -p .claude/skills
 
 # Copy skills
 cp -r /path/to/tapestry-skills-for-claude-code/youtube-transcript .claude/skills/
+cp -r /path/to/tapestry-skills-for-claude-code/article-extractor .claude/skills/
 cp -r /path/to/tapestry-skills-for-claude-code/ship-learn-next .claude/skills/
 ```
 
@@ -90,6 +108,22 @@ The skill will:
 4. Convert to readable plain text with video title as filename
 5. Remove duplicate lines
 6. Clean up temporary files
+
+### Article Extractor
+
+Claude will use this skill when you ask to extract content from a URL:
+
+```
+"Extract the article from https://example.com/blog-post"
+"Download this article without the ads"
+```
+
+The skill will:
+1. Check for extraction tools (reader or trafilatura)
+2. Download and extract clean article content
+3. Remove ads, navigation, and clutter
+4. Save as plain text with article title as filename
+5. Show preview of extracted content
 
 ### Ship-Learn-Next Action Planner
 
@@ -116,6 +150,17 @@ The skill will:
   pip3 install openai-whisper
   ```
 
+### Article Extractor
+- **reader** (recommended): Mozilla's Readability
+  ```bash
+  npm install -g reader-cli
+  ```
+- **trafilatura** (alternative): Python-based extractor
+  ```bash
+  pip3 install trafilatura
+  ```
+- If neither is installed, uses fallback method (less accurate)
+
 ### Ship-Learn-Next Action Planner
 - No additional requirements (uses built-in tools)
 
@@ -135,7 +180,21 @@ Claude:
 ✓ Cleaned up temporary files
 ```
 
-### Example 2: Create an Action Plan
+### Example 2: Extract an Article
+
+```
+User: "Extract https://example.com/how-to-build-saas"
+
+Claude:
+✓ Using reader (Mozilla Readability)
+✓ Extracted article: How to Build a SaaS in 30 Days
+✓ Saved to: How to Build a SaaS in 30 Days.txt
+
+Preview (first 10 lines):
+[Clean article text without ads or navigation...]
+```
+
+### Example 3: Create an Action Plan
 
 ```
 User: "Turn this transcript into an implementation plan"
@@ -182,6 +241,8 @@ MIT License - see [LICENSE](LICENSE) file for details
 - **Ship-Learn-Next framework**: Inspired by the ShipLearnNext GPT methodology
 - **yt-dlp**: Excellent tool for downloading YouTube content
 - **OpenAI Whisper**: State-of-the-art speech recognition
+- **Mozilla Readability**: Clean article extraction algorithm
+- **trafilatura**: Python web scraping and content extraction
 
 ## Support
 
