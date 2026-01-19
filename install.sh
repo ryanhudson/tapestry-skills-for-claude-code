@@ -109,7 +109,7 @@ for skill in "${SKILLS[@]}"; do
     fi
 
     # Symlink to source directory (so uv run works from project root)
-    ln -sfn "$SCRIPT_DIR/$skill" "$SKILLS_DIR/$skill"
+    ln -sfn "$SCRIPT_DIR/skills/$skill" "$SKILLS_DIR/$skill"
     echo "Installed: $skill"
 done
 

@@ -57,11 +57,18 @@ Transform passive learning content (transcripts, articles, tutorials) into actio
 
 ## Installation
 
-### Quick Install (Recommended)
+### Plugin Install (Recommended)
+
+```bash
+# Install directly as a Claude Code plugin
+claude /install-plugin https://github.com/ryanhudson/tapestry-skills-for-claude-code
+```
+
+### Script Install (Alternative)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/tapestry-skills-for-claude-code.git
+git clone https://github.com/ryanhudson/tapestry-skills-for-claude-code.git
 
 # Run the installation script
 cd tapestry-skills-for-claude-code
@@ -90,12 +97,15 @@ uv sync
 uv run tapestry-validate-url https://example.com
 uv run tapestry-sanitize-filename "Test: File/Name"
 
-# 4. Symlink skills to Claude
+# 4. Symlink skills to Claude (or use plugin install)
 mkdir -p ~/.claude/skills
-ln -sfn "$(pwd)/tapestry" ~/.claude/skills/tapestry
-ln -sfn "$(pwd)/youtube-transcript" ~/.claude/skills/youtube-transcript
-ln -sfn "$(pwd)/article-extractor" ~/.claude/skills/article-extractor
-ln -sfn "$(pwd)/ship-learn-next" ~/.claude/skills/ship-learn-next
+ln -sfn "$(pwd)/skills/tapestry" ~/.claude/skills/tapestry
+ln -sfn "$(pwd)/skills/youtube-transcript" ~/.claude/skills/youtube-transcript
+ln -sfn "$(pwd)/skills/article-extractor" ~/.claude/skills/article-extractor
+ln -sfn "$(pwd)/skills/ship-learn-next" ~/.claude/skills/ship-learn-next
+
+# OR install as a plugin:
+# claude /install-plugin https://github.com/ryanhudson/tapestry-skills-for-claude-code
 ```
 
 ## Usage
@@ -240,6 +250,7 @@ These skills are built on the principle that **learning = doing better, not know
 
 ```
 tapestry-skills-for-claude-code/
+├── plugin.json             # Claude Code plugin manifest
 ├── pyproject.toml          # Dependencies (UV/pip)
 ├── src/tapestry/           # Python utilities
 │   ├── validate_url.py
@@ -247,10 +258,12 @@ tapestry-skills-for-claude-code/
 │   ├── safe_download.py
 │   ├── vtt_to_text.py
 │   └── html_extractor.py
-├── tapestry/               # Master skill
-├── youtube-transcript/     # YouTube extraction skill
-├── article-extractor/      # Article extraction skill
-├── ship-learn-next/        # Action planning skill
+├── skills/                 # Claude Code skills
+│   ├── tapestry/           # Master skill
+│   ├── youtube-transcript/ # YouTube extraction skill
+│   ├── article-extractor/  # Article extraction skill
+│   └── ship-learn-next/    # Action planning skill
+├── tests/                  # Test suite
 ├── shared/references/      # Security documentation
 └── install.sh              # Installation script
 ```

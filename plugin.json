@@ -1,0 +1,6 @@
+{
+  "name": "tapestry-skills",
+  "version": "1.0.0",
+  "description": "Content extraction and action planning skills for Claude Code. Download YouTube transcripts, extract articles, and turn content into actionable plans.",
+  "repository": "https://github.com/ryanhudson/tapestry-skills-for-claude-code"
+}
