@@ -23,43 +23,24 @@ URL → Validate → Detect Type → Extract Content → Create Plan → Save Fi
 
 ## Security Requirements
 
-**CRITICAL**: Before processing ANY URL, validate it first.
+**CRITICAL**: Before processing ANY URL, validate it first using the shared security scripts.
+
+Use the shared security scripts located in `../shared/scripts/`:
 
 ### URL Validation (Required)
 
 ```bash
 URL="$1"
 
-# Validate protocol - ONLY http/https allowed
-if [[ ! "$URL" =~ ^https?:// ]]; then
-    echo "Error: Only HTTP/HTTPS URLs are supported"
-    exit 1
-fi
-
-# Block internal network access (SSRF protection)
-if [[ "$URL" =~ ^https?://(localhost|127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.0\.0\.0) ]]; then
-    echo "Error: Internal network URLs are not allowed"
-    exit 1
-fi
+# Run security validation (checks protocol, blocks SSRF, etc.)
+../shared/scripts/validate-url.sh "$URL" || exit 1
 ```
 
 ### Filename Sanitization (Required)
 
-Always sanitize titles before using as filenames:
-
 ```bash
-sanitize_filename() {
-    echo "$1" | \
-        tr -d '\0' | \
-        tr '/' '_' | \
-        tr ':' '-' | \
-        tr '\\' '_' | \
-        tr -d '?*"<>|`$'"'" | \
-        sed 's/\.\.//g' | \
-        sed 's/^[. ]*//' | \
-        sed 's/[. ]*$//' | \
-        cut -c 1-100
-}
+# Use shared sanitization script for all titles
+SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
 ```
 
 ## Step 1: Detect Content Type
@@ -109,7 +90,7 @@ fi
 
 # Get and sanitize title
 VIDEO_TITLE=$(yt-dlp --print "%(title)s" "$URL" 2>/dev/null)
-SAFE_TITLE=$(sanitize_filename "$VIDEO_TITLE")
+SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$VIDEO_TITLE")
 
 # Create temp file
 TEMP_VTT=$(mktemp)
@@ -190,7 +171,7 @@ print(p.get())
         ;;
 esac
 
-SAFE_TITLE=$(sanitize_filename "$TITLE")
+SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 mv "$TEMP_FILE" "$CONTENT_FILE"
 trap - EXIT
@@ -201,7 +182,7 @@ trap - EXIT
 ```bash
 # Sanitize filename from URL
 URL_BASENAME=$(basename "$URL" | cut -d'?' -f1)
-SAFE_PDF=$(sanitize_filename "$URL_BASENAME")
+SAFE_PDF=$(../shared/scripts/sanitize-filename.sh "$URL_BASENAME")
 
 # Ensure .pdf extension
 [[ "$SAFE_PDF" != *.pdf ]] && SAFE_PDF="${SAFE_PDF}.pdf"

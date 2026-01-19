@@ -21,31 +21,26 @@ URL → Validate → Check yt-dlp → List Subtitles → Download → Convert to
 
 ## Security Requirements
 
+Use the shared security scripts located in `../shared/scripts/`:
+
 ### URL Validation
 
 ```bash
-# Only accept YouTube URLs
+# Validate YouTube URL (must also be a valid YouTube domain)
 if [[ ! "$URL" =~ ^https?://(www\.)?(youtube\.com|youtu\.be)/ ]]; then
     echo "Error: Not a valid YouTube URL"
     exit 1
 fi
+
+# Run general security validation
+../shared/scripts/validate-url.sh "$URL" || exit 1
 ```
 
 ### Filename Sanitization
 
 ```bash
-sanitize_filename() {
-    echo "$1" | \
-        tr -d '\0' | \
-        tr '/' '_' | \
-        tr ':' '-' | \
-        tr '\\' '_' | \
-        tr -d '?*"<>|`$'"'" | \
-        sed 's/\.\.//g' | \
-        sed 's/^[. ]*//' | \
-        sed 's/[. ]*$//' | \
-        cut -c 1-100
-}
+# Use shared sanitization script
+SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$VIDEO_TITLE")
 ```
 
 ## Step 1: Check yt-dlp Installation
@@ -98,7 +93,7 @@ YouTube auto-generated VTT files contain duplicates due to progressive caption d
 
 ```bash
 VIDEO_TITLE=$(yt-dlp --print "%(title)s" "$URL" 2>/dev/null)
-SAFE_TITLE=$(sanitize_filename "$VIDEO_TITLE")
+SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$VIDEO_TITLE")
 
 VTT_FILE=$(find "$TEMP_DIR" -name "*.vtt" | head -n 1)
 
@@ -188,11 +183,8 @@ if [[ ! "$URL" =~ ^https?://(www\.)?(youtube\.com|youtu\.be)/ ]]; then
     exit 1
 fi
 
-# Sanitization function
-sanitize_filename() {
-    echo "$1" | tr -d '\0' | tr '/' '_' | tr ':' '-' | tr '\\' '_' | \
-        tr -d '?*"<>|`$'"'" | sed 's/\.\.//g' | cut -c 1-100
-}
+# Use shared scripts for security
+SCRIPT_DIR="$(dirname "$0")/../shared/scripts"
 
 # Check yt-dlp
 if ! command -v yt-dlp &> /dev/null; then
@@ -202,7 +194,7 @@ fi
 
 # Get video info
 VIDEO_TITLE=$(yt-dlp --print "%(title)s" "$URL" 2>/dev/null)
-SAFE_TITLE=$(sanitize_filename "$VIDEO_TITLE")
+SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$VIDEO_TITLE")
 
 echo "Video: $VIDEO_TITLE"
 echo ""

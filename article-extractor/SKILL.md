@@ -21,37 +21,20 @@ URL → Validate → Detect Tool → Extract Content → Sanitize Filename → S
 
 ## Security Requirements
 
+Use the shared security scripts located in `../shared/scripts/`:
+
 ### URL Validation
 
 ```bash
-# Validate protocol
-if [[ ! "$URL" =~ ^https?:// ]]; then
-    echo "Error: Only HTTP/HTTPS URLs are supported"
-    exit 1
-fi
-
-# Block internal networks (SSRF protection)
-if [[ "$URL" =~ ^https?://(localhost|127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
-    echo "Error: Internal network URLs are not allowed"
-    exit 1
-fi
+# Run security validation (checks protocol, blocks SSRF, etc.)
+../shared/scripts/validate-url.sh "$URL" || exit 1
 ```
 
 ### Filename Sanitization
 
 ```bash
-sanitize_filename() {
-    echo "$1" | \
-        tr -d '\0' | \
-        tr '/' '_' | \
-        tr ':' '-' | \
-        tr '\\' '_' | \
-        tr -d '?*"<>|`$'"'" | \
-        sed 's/\.\.//g' | \
-        sed 's/^[. ]*//' | \
-        sed 's/[. ]*$//' | \
-        cut -c 1-100
-}
+# Use shared sanitization script
+SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
 ```
 
 ## Step 1: Check Available Tools
@@ -159,7 +142,7 @@ print(p.get_content())
 ## Step 3: Save with Clean Filename
 
 ```bash
-SAFE_TITLE=$(sanitize_filename "$TITLE")
+SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 
 # Verify content was extracted
@@ -186,22 +169,11 @@ set -e
 
 URL="$1"
 
+# Use shared scripts for security
+SCRIPT_DIR="$(dirname "$0")/../shared/scripts"
+
 # Validate URL
-if [[ ! "$URL" =~ ^https?:// ]]; then
-    echo "Error: Only HTTP/HTTPS URLs are supported"
-    exit 1
-fi
-
-if [[ "$URL" =~ ^https?://(localhost|127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
-    echo "Error: Internal network URLs not allowed"
-    exit 1
-fi
-
-# Sanitization function
-sanitize_filename() {
-    echo "$1" | tr -d '\0' | tr '/' '_' | tr ':' '-' | tr '\\' '_' | \
-        tr -d '?*"<>|`$'"'" | sed 's/\.\.//g' | cut -c 1-100
-}
+"$SCRIPT_DIR/validate-url.sh" "$URL" || exit 1
 
 # Detect tool
 if command -v reader &> /dev/null; then
@@ -259,7 +231,7 @@ if [ ! -s "$TEMP_FILE" ]; then
 fi
 
 # Save with clean filename
-SAFE_TITLE=$(sanitize_filename "$TITLE")
+SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 mv "$TEMP_FILE" "$CONTENT_FILE"
 trap - EXIT
