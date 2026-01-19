@@ -11,6 +11,10 @@ Master skill that orchestrates the entire Tapestry workflow:
 2. Extract content using appropriate method
 3. Create a Ship-Learn-Next action plan automatically
 
+## Prerequisites
+
+This skill requires [UV](https://docs.astral.sh/uv/) for dependency management. Run from the tapestry-skills project root.
+
 ## Workflow Overview
 
 ```
@@ -23,9 +27,9 @@ URL → Validate → Detect Type → Extract Content → Create Plan → Save Fi
 
 ## Security Requirements
 
-**CRITICAL**: Before processing ANY URL, validate it first using the shared security scripts.
+**CRITICAL**: Before processing ANY URL, validate it first using the tapestry security utilities.
 
-Use the shared security scripts located in `../shared/scripts/`:
+All security utilities are available via UV from the project root.
 
 ### URL Validation (Required)
 
@@ -33,14 +37,14 @@ Use the shared security scripts located in `../shared/scripts/`:
 URL="$1"
 
 # Run security validation (checks protocol, blocks SSRF, etc.)
-../shared/scripts/validate-url.sh "$URL" || exit 1
+uv run tapestry-validate-url "$URL" || exit 1
 ```
 
 ### Filename Sanitization (Required)
 
 ```bash
-# Use shared sanitization script for all titles
-SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
+# Use tapestry sanitization utility for all titles
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$TITLE")
 ```
 
 ## Step 1: Detect Content Type
@@ -82,38 +86,22 @@ echo "Detected: $CONTENT_TYPE"
 Use the youtube-transcript skill workflow:
 
 ```bash
-# Check yt-dlp
-if ! command -v yt-dlp &> /dev/null; then
-    echo "Installing yt-dlp..."
-    brew install yt-dlp || pip3 install yt-dlp
-fi
-
-# Get and sanitize title
-VIDEO_TITLE=$(yt-dlp --print "%(title)s" "$URL" 2>/dev/null)
-SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$VIDEO_TITLE")
+# yt-dlp is available through UV
+VIDEO_TITLE=$(uv run yt-dlp --print "%(title)s" "$URL" 2>/dev/null)
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$VIDEO_TITLE")
 
 # Create temp file
-TEMP_VTT=$(mktemp)
-trap "rm -f '$TEMP_VTT'" EXIT
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf '$TEMP_DIR'" EXIT
 
 # Download transcript (try manual first, then auto-generated)
-if ! yt-dlp --write-sub --skip-download --sub-langs en -o "$TEMP_VTT" "$URL" 2>/dev/null; then
-    yt-dlp --write-auto-sub --skip-download --sub-langs en -o "$TEMP_VTT" "$URL"
+if ! uv run yt-dlp --write-sub --skip-download --sub-langs en -o "$TEMP_DIR/transcript" "$URL" 2>/dev/null; then
+    uv run yt-dlp --write-auto-sub --skip-download --sub-langs en -o "$TEMP_DIR/transcript" "$URL"
 fi
 
-# Convert VTT to clean text (deduplicate)
-python3 -c "
-import sys, re
-seen = set()
-for line in sys.stdin:
-    line = line.strip()
-    if line and not line.startswith('WEBVTT') and '-->' not in line:
-        clean = re.sub('<[^>]*>', '', line)
-        clean = clean.replace('&amp;', '&').replace('&gt;', '>').replace('&lt;', '<')
-        if clean and clean not in seen:
-            print(clean)
-            seen.add(clean)
-" < "${TEMP_VTT}.en.vtt" > "${SAFE_TITLE}.txt"
+# Find and convert VTT to clean text
+VTT_FILE=$(find "$TEMP_DIR" -name "*.vtt" | head -n 1)
+uv run tapestry-vtt-to-text "$VTT_FILE" --output "${SAFE_TITLE}.txt"
 
 CONTENT_FILE="${SAFE_TITLE}.txt"
 ```
@@ -126,10 +114,8 @@ Use the article-extractor skill workflow:
 # Check for extraction tools
 if command -v reader &> /dev/null; then
     TOOL="reader"
-elif command -v trafilatura &> /dev/null; then
-    TOOL="trafilatura"
 else
-    TOOL="fallback"
+    TOOL="trafilatura"
 fi
 
 TEMP_FILE=$(mktemp)
@@ -141,37 +127,19 @@ case $TOOL in
         TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
         ;;
     trafilatura)
-        trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
-        TITLE=$(trafilatura --URL "$URL" --json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('title','Article'))" 2>/dev/null || echo "Article")
-        ;;
-    fallback)
-        TITLE=$(curl -s --max-time 30 "$URL" | grep -oP '<title>\K[^<]+' | head -n 1)
-        curl -s --max-time 30 "$URL" | python3 -c "
-from html.parser import HTMLParser
-import sys
-
-class Extractor(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.content = []
-        self.skip = {'script','style','nav','header','footer','aside'}
-        self.capture = False
-    def handle_starttag(self, tag, attrs):
-        self.capture = tag in {'p','article','main'} and tag not in self.skip
-    def handle_data(self, data):
-        if self.capture and data.strip():
-            self.content.append(data.strip())
-    def get(self):
-        return '\n\n'.join(self.content)
-
-p = Extractor()
-p.feed(sys.stdin.read())
-print(p.get())
-" > "$TEMP_FILE"
+        uv run trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
+        TITLE=$(uv run trafilatura --URL "$URL" --json 2>/dev/null | \
+            python3 -c "import json,sys; print(json.load(sys.stdin).get('title','Article'))" 2>/dev/null || echo "Article")
         ;;
 esac
 
-SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
+# Fallback if extraction failed
+if [ ! -s "$TEMP_FILE" ]; then
+    uv run tapestry-extract-html "$URL" --output "$TEMP_FILE"
+    TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
+fi
+
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 mv "$TEMP_FILE" "$CONTENT_FILE"
 trap - EXIT
@@ -182,21 +150,13 @@ trap - EXIT
 ```bash
 # Sanitize filename from URL
 URL_BASENAME=$(basename "$URL" | cut -d'?' -f1)
-SAFE_PDF=$(../shared/scripts/sanitize-filename.sh "$URL_BASENAME")
+SAFE_PDF=$(uv run tapestry-sanitize-filename "$URL_BASENAME")
 
 # Ensure .pdf extension
 [[ "$SAFE_PDF" != *.pdf ]] && SAFE_PDF="${SAFE_PDF}.pdf"
 
-# Download with size limit (100MB)
-curl \
-    --silent \
-    --show-error \
-    --location \
-    --max-redirs 5 \
-    --max-filesize 104857600 \
-    --max-time 300 \
-    --output "$SAFE_PDF" \
-    "$URL"
+# Download with security checks
+uv run tapestry-safe-download "$URL" "$SAFE_PDF" --max-size 104857600
 
 # Verify it's actually a PDF
 if ! head -c 4 "$SAFE_PDF" | grep -q '%PDF'; then
@@ -257,19 +217,24 @@ When will you ship Rep 1?
 
 | Issue | Action |
 |-------|--------|
+| UV not installed | Install with `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Invalid URL | Reject with clear message |
 | No subtitles (YouTube) | Offer Whisper transcription (with consent) |
 | Paywall/login required | Inform user, cannot extract |
-| Tools not installed | Auto-install or provide instructions |
 | Download failed | Check URL, retry, inform user |
 | Empty extraction | Verify before planning, don't create empty plan |
 
 ## Dependencies
 
-**YouTube**: yt-dlp, Python 3
-**Articles**: reader (npm) OR trafilatura (pip) OR curl (fallback)
-**PDFs**: curl, pdftotext (optional, from poppler)
-**Planning**: No additional requirements
+All dependencies are managed via UV and `pyproject.toml`:
+
+- **yt-dlp**: YouTube downloads (pinned version)
+- **trafilatura**: Article extraction (pinned version)
+- **openai-whisper** (optional): For videos without subtitles
+
+**System tools** (install separately if needed):
+- **pdftotext**: PDF text extraction (`brew install poppler`)
+- **reader**: Mozilla Readability (`npm install -g reader-cli`)
 
 ## Security Reference
 

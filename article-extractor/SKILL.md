@@ -8,6 +8,10 @@ allowed-tools: Bash,Read,Write
 
 Extract main content from web articles and blog posts, removing navigation, ads, and clutter. Saves clean, readable text.
 
+## Prerequisites
+
+This skill requires [UV](https://docs.astral.sh/uv/) for dependency management. Run from the tapestry-skills project root.
+
 ## Workflow
 
 ```
@@ -16,25 +20,25 @@ URL → Validate → Detect Tool → Extract Content → Sanitize Filename → S
 
 **Tools (in priority order)**:
 1. `reader` (Mozilla Readability) - best for most articles
-2. `trafilatura` - excellent for blogs/news
-3. Fallback (curl + basic parsing) - works without dependencies
+2. `trafilatura` - excellent for blogs/news (included in dependencies)
+3. Fallback (`tapestry-extract-html`) - works without external tools
 
 ## Security Requirements
 
-Use the shared security scripts located in `../shared/scripts/`:
+All security utilities are available via UV from the project root.
 
 ### URL Validation
 
 ```bash
 # Run security validation (checks protocol, blocks SSRF, etc.)
-../shared/scripts/validate-url.sh "$URL" || exit 1
+uv run tapestry-validate-url "$URL" || exit 1
 ```
 
 ### Filename Sanitization
 
 ```bash
-# Use shared sanitization script
-SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
+# Use tapestry sanitization utility
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$TITLE")
 ```
 
 ## Step 1: Check Available Tools
@@ -42,27 +46,22 @@ SAFE_TITLE=$(../shared/scripts/sanitize-filename.sh "$TITLE")
 ```bash
 if command -v reader &> /dev/null; then
     TOOL="reader"
-elif command -v trafilatura &> /dev/null; then
-    TOOL="trafilatura"
 else
-    TOOL="fallback"
+    # trafilatura is included in project dependencies
+    TOOL="trafilatura"
 fi
 
 echo "Using: $TOOL"
 ```
 
-### Installation Commands
+### Optional: Install reader (npm)
 
-**reader** (recommended):
+For best results, install reader separately:
+
 ```bash
 npm install -g @aspect/readability-cli
 # or
 npm install -g reader-cli
-```
-
-**trafilatura**:
-```bash
-pip3 install --user trafilatura
 ```
 
 ## Step 2: Extract Content
@@ -79,70 +78,46 @@ reader "$URL" > "$TEMP_FILE"
 TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
 ```
 
-### Using trafilatura
+### Using trafilatura (via UV)
 
 ```bash
 TEMP_FILE=$(mktemp)
 trap "rm -f '$TEMP_FILE'" EXIT
 
 # Get content
-trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
+uv run trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
 
 # Get title from metadata
-TITLE=$(trafilatura --URL "$URL" --json 2>/dev/null | \
+TITLE=$(uv run trafilatura --URL "$URL" --json 2>/dev/null | \
     python3 -c "import json,sys; print(json.load(sys.stdin).get('title','Article'))" 2>/dev/null || echo "Article")
 ```
 
-### Fallback Method
+### Fallback Method (tapestry-extract-html)
+
+Use the built-in HTML extractor when other tools aren't available:
+
+```bash
+# Extract content using tapestry's HTML extractor
+uv run tapestry-extract-html "$URL" --output article.txt
+```
+
+Or get title and content separately:
 
 ```bash
 TEMP_FILE=$(mktemp)
 trap "rm -f '$TEMP_FILE'" EXIT
 
-# Get title from HTML
-TITLE=$(curl -s --max-time 30 "$URL" | grep -oP '<title>\K[^<]+' | head -n 1)
-TITLE=${TITLE%% - *}  # Remove site name suffix
-TITLE=${TITLE%% | *}
+# Fetch and extract
+uv run tapestry-extract-html "$URL" --output "$TEMP_FILE"
 
-# Extract content
-curl -s --max-time 30 "$URL" | python3 -c "
-from html.parser import HTMLParser
-import sys
-
-class Extractor(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.content = []
-        self.skip = {'script', 'style', 'nav', 'header', 'footer', 'aside', 'form'}
-        self.capture = False
-
-    def handle_starttag(self, tag, attrs):
-        if tag not in self.skip and tag in {'p', 'article', 'main'}:
-            self.capture = True
-        if tag in {'h1', 'h2', 'h3'}:
-            self.content.append('')
-
-    def handle_endtag(self, tag):
-        if tag in {'p', 'article', 'main'}:
-            self.capture = False
-
-    def handle_data(self, data):
-        if self.capture and data.strip():
-            self.content.append(data.strip())
-
-    def get_content(self):
-        return '\n\n'.join(self.content)
-
-p = Extractor()
-p.feed(sys.stdin.read())
-print(p.get_content())
-" > "$TEMP_FILE"
+# Title is on first line (after "# ")
+TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
 ```
 
 ## Step 3: Save with Clean Filename
 
 ```bash
-SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$TITLE")
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 
 # Verify content was extracted
@@ -169,19 +144,14 @@ set -e
 
 URL="$1"
 
-# Use shared scripts for security
-SCRIPT_DIR="$(dirname "$0")/../shared/scripts"
-
 # Validate URL
-"$SCRIPT_DIR/validate-url.sh" "$URL" || exit 1
+uv run tapestry-validate-url "$URL" || exit 1
 
 # Detect tool
 if command -v reader &> /dev/null; then
     TOOL="reader"
-elif command -v trafilatura &> /dev/null; then
-    TOOL="trafilatura"
 else
-    TOOL="fallback"
+    TOOL="trafilatura"
 fi
 
 echo "Extracting with: $TOOL"
@@ -197,32 +167,18 @@ case $TOOL in
         TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
         ;;
     trafilatura)
-        trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
-        TITLE=$(trafilatura --URL "$URL" --json 2>/dev/null | \
+        uv run trafilatura --URL "$URL" --output-format txt --no-comments > "$TEMP_FILE"
+        TITLE=$(uv run trafilatura --URL "$URL" --json 2>/dev/null | \
             python3 -c "import json,sys; print(json.load(sys.stdin).get('title','Article'))" 2>/dev/null || echo "Article")
         ;;
-    fallback)
-        TITLE=$(curl -s --max-time 30 "$URL" | grep -oP '<title>\K[^<]+' | head -n 1)
-        TITLE=${TITLE%% - *}
-        # See "Fallback Method" section above for full extraction code
-        curl -s --max-time 30 "$URL" | python3 -c "
-from html.parser import HTMLParser
-import sys
-class E(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.c=[]
-        self.s={'script','style','nav','header','footer','aside','form'}
-        self.cap=False
-    def handle_starttag(self,t,a):
-        if t not in self.s and t in {'p','article','main'}: self.cap=True
-    def handle_data(self,d):
-        if self.cap and d.strip(): self.c.append(d.strip())
-    def get(self): return '\n\n'.join(self.c)
-p=E(); p.feed(sys.stdin.read()); print(p.get())
-" > "$TEMP_FILE"
-        ;;
 esac
+
+# If extraction failed, try fallback
+if [ ! -s "$TEMP_FILE" ]; then
+    echo "Primary extraction failed, trying fallback..."
+    uv run tapestry-extract-html "$URL" --output "$TEMP_FILE"
+    TITLE=$(head -n 1 "$TEMP_FILE" | sed 's/^# //')
+fi
 
 # Verify extraction
 if [ ! -s "$TEMP_FILE" ]; then
@@ -231,7 +187,7 @@ if [ ! -s "$TEMP_FILE" ]; then
 fi
 
 # Save with clean filename
-SAFE_TITLE=$("$SCRIPT_DIR/sanitize-filename.sh" "$TITLE")
+SAFE_TITLE=$(uv run tapestry-sanitize-filename "$TITLE")
 CONTENT_FILE="${SAFE_TITLE}.txt"
 mv "$TEMP_FILE" "$CONTENT_FILE"
 trap - EXIT
@@ -251,12 +207,12 @@ head -n 10 "$CONTENT_FILE"
 
 | Issue | Solution |
 |-------|----------|
+| UV not installed | Install with `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Invalid URL | Reject with clear message |
 | Internal URL (SSRF) | Block localhost/private IPs |
 | Paywall/login required | Inform user, cannot extract |
-| No tool available | Use fallback method |
-| Empty extraction | Try alternate tool, inform user |
-| Timeout | Set `--max-time 30` on curl |
+| Empty extraction | Try fallback method, inform user |
+| Timeout | Fallback uses 30s timeout |
 
 ## What Gets Extracted
 
@@ -277,17 +233,21 @@ head -n 10 "$CONTENT_FILE"
 
 ## Tool Comparison
 
-| Tool | Strengths | Install |
-|------|-----------|---------|
-| reader | Best overall, Firefox algorithm | `npm install -g reader-cli` |
-| trafilatura | News/blogs, multi-language | `pip3 install trafilatura` |
-| fallback | No dependencies | Built-in |
+| Tool | Strengths | Availability |
+|------|-----------|--------------|
+| reader | Best overall, Firefox algorithm | npm install separately |
+| trafilatura | News/blogs, multi-language | Included in dependencies |
+| tapestry-extract-html | No external dependencies | Built-in fallback |
 
 ## Dependencies
 
-- **reader** OR **trafilatura**: Recommended (better extraction)
-- **curl**: Required for fallback
-- **Python 3**: Required for fallback parsing
+All dependencies are managed via UV and `pyproject.toml`:
+
+- **trafilatura**: Article extraction (pinned version)
+- **tapestry-extract-html**: Built-in fallback extractor
+
+Optional (install separately):
+- **reader**: Mozilla Readability CLI (`npm install -g reader-cli`)
 
 ## Security Reference
 

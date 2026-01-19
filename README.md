@@ -4,9 +4,21 @@ A collection of productivity skills for [Claude Code](https://claude.com/claude-
 
 **Tapestry weaves learning content into action.** Extract any content (YouTube, articles, PDFs) and automatically create implementation plans.
 
+## Requirements
+
+- **[UV](https://docs.astral.sh/uv/)** - Fast Python package manager (required)
+- **Python 3.10+** - UV will manage this for you
+
+Install UV:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or
+brew install uv
+```
+
 ## Skills Included
 
-### 0. Tapestry (Master Skill) ⭐
+### 0. Tapestry (Master Skill)
 The unified workflow that orchestrates everything. Just say `tapestry <URL>` and it:
 1. Detects content type (YouTube, article, PDF)
 2. Extracts clean content
@@ -18,16 +30,11 @@ The unified workflow that orchestrates everything. Just say `tapestry <URL>` and
 Download and clean YouTube video transcripts with automatic deduplication and readable formatting.
 
 **Features:**
-- Downloads transcripts using yt-dlp
+- Downloads transcripts using yt-dlp (pinned version via UV)
 - Removes duplicate lines (YouTube VTT format issue)
 - Uses video title for filename
 - Fallback to Whisper transcription if no subtitles available
 - Automatic cleanup of temporary files
-
-**Use cases:**
-- Get transcripts from educational videos
-- Extract content from tutorials
-- Archive important talks/interviews
 
 ### 2. Article Extractor
 Extract clean, readable content from web articles and blog posts, removing ads, navigation, and clutter.
@@ -37,13 +44,7 @@ Extract clean, readable content from web articles and blog posts, removing ads, 
 - Removes ads, navigation, and newsletter signups
 - Saves as clean plain text
 - Uses article title for filename
-- Multiple extraction methods with automatic fallback
-
-**Use cases:**
-- Save articles for offline reading
-- Extract tutorial content
-- Archive important blog posts
-- Get clean text without distractions
+- Built-in fallback extractor when external tools unavailable
 
 ### 3. Ship-Learn-Next Action Planner
 Transform passive learning content (transcripts, articles, tutorials) into actionable implementation plans using the Ship-Learn-Next framework.
@@ -53,13 +54,6 @@ Transform passive learning content (transcripts, articles, tutorials) into actio
 - Creates 5-rep action plans with timelines
 - Focuses on DOING over studying
 - Includes reflection questions after each rep
-- Saves plan to markdown file
-
-**Use cases:**
-- Turn YouTube tutorials into action plans
-- Extract implementation steps from articles
-- Create learning quests from course content
-- Build by shipping, not just consuming
 
 ## Installation
 
@@ -75,32 +69,33 @@ chmod +x install.sh
 ./install.sh
 ```
 
+The installer will:
+1. Check for UV (offer to install if missing)
+2. Verify Python 3.10+
+3. Install all dependencies via `uv sync`
+4. Verify the utilities work
+5. Symlink skills to `~/.claude/skills/`
+
 ### Manual Installation
 
-#### Option 1: Personal Skills (Available in all projects)
-
 ```bash
-# Create personal skills directory if it doesn't exist
+# 1. Clone and enter directory
+git clone https://github.com/yourusername/tapestry-skills-for-claude-code.git
+cd tapestry-skills-for-claude-code
+
+# 2. Install dependencies
+uv sync
+
+# 3. Verify installation
+uv run tapestry-validate-url https://example.com
+uv run tapestry-sanitize-filename "Test: File/Name"
+
+# 4. Symlink skills to Claude
 mkdir -p ~/.claude/skills
-
-# Copy skills
-cp -r tapestry ~/.claude/skills/
-cp -r youtube-transcript ~/.claude/skills/
-cp -r article-extractor ~/.claude/skills/
-cp -r ship-learn-next ~/.claude/skills/
-```
-
-#### Option 2: Project Skills (Only in specific project)
-
-```bash
-# In your project directory
-mkdir -p .claude/skills
-
-# Copy skills
-cp -r /path/to/tapestry-skills-for-claude-code/tapestry .claude/skills/
-cp -r /path/to/tapestry-skills-for-claude-code/youtube-transcript .claude/skills/
-cp -r /path/to/tapestry-skills-for-claude-code/article-extractor .claude/skills/
-cp -r /path/to/tapestry-skills-for-claude-code/ship-learn-next .claude/skills/
+ln -sfn "$(pwd)/tapestry" ~/.claude/skills/tapestry
+ln -sfn "$(pwd)/youtube-transcript" ~/.claude/skills/youtube-transcript
+ln -sfn "$(pwd)/article-extractor" ~/.claude/skills/article-extractor
+ln -sfn "$(pwd)/ship-learn-next" ~/.claude/skills/ship-learn-next
 ```
 
 ## Usage
@@ -127,143 +122,107 @@ The skill will:
 
 ### YouTube Transcript Downloader
 
-Once installed, Claude will automatically use this skill when you ask to download YouTube transcripts:
-
 ```
 "Download the transcript for https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-The skill will:
-1. Check if yt-dlp is installed (install if needed)
-2. List available subtitles
-3. Try manual subtitles first, then auto-generated
-4. Convert to readable plain text with video title as filename
-5. Remove duplicate lines
-6. Clean up temporary files
-
 ### Article Extractor
-
-Claude will use this skill when you ask to extract content from a URL:
 
 ```
 "Extract the article from https://example.com/blog-post"
 "Download this article without the ads"
 ```
 
-The skill will:
-1. Check for extraction tools (reader or trafilatura)
-2. Download and extract clean article content
-3. Remove ads, navigation, and clutter
-4. Save as plain text with article title as filename
-5. Show preview of extracted content
-
 ### Ship-Learn-Next Action Planner
-
-Claude will use this skill when you want to turn content into an action plan:
 
 ```
 "Turn this transcript into an implementation plan"
 "Make this actionable using the Ship-Learn-Next framework"
 ```
 
-The skill will:
-1. Read the content file
-2. Extract actionable lessons
-3. Help you define a specific quest
-4. Design 5 progressive reps (iterations)
-5. Save the complete plan as a markdown file
+## Built-in Utilities
 
-## Requirements
+All utilities are available via `uv run` from the project root:
 
-### YouTube Transcript Downloader
-- **yt-dlp**: Automatically installed by the skill (uses Homebrew on macOS, apt on Linux, or pip)
-- **Whisper** (optional): For transcribing videos without subtitles
-  ```bash
-  pip3 install openai-whisper
-  ```
+| Utility | Description |
+|---------|-------------|
+| `tapestry-validate-url` | URL validation with SSRF protection |
+| `tapestry-sanitize-filename` | Safe filename generation |
+| `tapestry-safe-download` | Secure file downloads with size limits |
+| `tapestry-vtt-to-text` | VTT subtitle to plain text conversion |
+| `tapestry-extract-html` | Fallback HTML content extractor |
 
-### Article Extractor
-- **reader** (recommended): Mozilla's Readability
-  ```bash
-  npm install -g reader-cli
-  ```
-- **trafilatura** (alternative): Python-based extractor
-  ```bash
-  pip3 install trafilatura
-  ```
-- If neither is installed, uses fallback method (less accurate)
+Example:
+```bash
+uv run tapestry-validate-url "https://example.com"
+uv run tapestry-sanitize-filename "My: Unsafe/Filename"
+uv run tapestry-vtt-to-text captions.vtt --output transcript.txt
+```
 
-### Ship-Learn-Next Action Planner
-- No additional requirements (uses built-in tools)
+## Dependencies
+
+All Python dependencies are managed via UV and pinned in `pyproject.toml`:
+
+| Package | Purpose |
+|---------|---------|
+| `yt-dlp` | YouTube video/transcript downloads |
+| `trafilatura` | Article extraction |
+| `openai-whisper` (optional) | Transcription for videos without subtitles |
+
+**Optional system tools** (install separately for best results):
+- `reader` - Mozilla Readability CLI (`npm install -g reader-cli`)
+- `pdftotext` - PDF text extraction (`brew install poppler`)
 
 ## Examples
 
-### Example 0: Tapestry Unified Workflow (Recommended)
+### Example 1: Tapestry Unified Workflow
 
 ```
 User: "tapestry https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
 Claude:
-🧵 Tapestry Workflow Starting...
-📍 Detected: youtube
-📺 Extracting YouTube transcript...
-✓ Saved transcript: Never Gonna Give You Up.txt
+Tapestry Workflow Starting...
+Detected: youtube
+Extracting YouTube transcript...
+Saved transcript: Never Gonna Give You Up.txt
 
-🚀 Creating action plan...
-✓ Quest: Master Video Production Techniques
-✓ Saved plan: Ship-Learn-Next Plan - Master Video Production.md
+Creating action plan...
+Quest: Master Video Production Techniques
+Saved plan: Ship-Learn-Next Plan - Master Video Production.md
 
-✅ Tapestry Complete!
-📥 Content: Never Gonna Give You Up.txt
-📋 Plan: Ship-Learn-Next Plan - Master Video Production.md
+Tapestry Complete!
+Content: Never Gonna Give You Up.txt
+Plan: Ship-Learn-Next Plan - Master Video Production.md
 
-🎯 Rep 1 (This Week): Film and edit a 60-second video
+Rep 1 (This Week): Film and edit a 60-second video
 When will you ship Rep 1?
 ```
 
-### Example 1: Download and Process a YouTube Video
+### Example 2: Download YouTube Transcript
 
 ```
-User: "Download transcript for https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+User: "Download transcript for https://www.youtube.com/watch?v=VIDEO_ID"
 
 Claude:
-✓ Checked available subtitles
-✓ Downloaded auto-generated transcript
-✓ Converted to readable format
-✓ Removed duplicate lines
-✓ Saved to: Never Gonna Give You Up.txt
-✓ Cleaned up temporary files
+Checked available subtitles
+Downloaded auto-generated transcript
+Converted to readable format
+Removed duplicate lines
+Saved to: Video Title.txt
 ```
 
-### Example 2: Extract an Article
+### Example 3: Extract Article
 
 ```
 User: "Extract https://example.com/how-to-build-saas"
 
 Claude:
-✓ Using reader (Mozilla Readability)
-✓ Extracted article: How to Build a SaaS in 30 Days
-✓ Saved to: How to Build a SaaS in 30 Days.txt
+Using trafilatura for extraction
+Extracted article: How to Build a SaaS in 30 Days
+Saved to: How to Build a SaaS in 30 Days.txt
 
 Preview (first 10 lines):
 [Clean article text without ads or navigation...]
-```
-
-### Example 3: Create an Action Plan
-
-```
-User: "Turn this transcript into an implementation plan"
-
-Claude:
-✓ Read transcript: Build a SaaS in 30 Days.txt
-✓ Extracted core lessons
-✓ Created 5-rep action plan
-✓ Saved to: Ship-Learn-Next Plan - Build a SaaS.md
-
-Your quest: Launch a SaaS MVP and get first 10 customers in 4 weeks
-
-Rep 1 (this week): Find 3 proven market opportunities
-When will you ship Rep 1?
 ```
 
 ## Philosophy
@@ -276,6 +235,25 @@ These skills are built on the principle that **learning = doing better, not know
 - **Next**: Plan the next iteration based on learnings
 
 100 reps beats 100 hours of study.
+
+## Project Structure
+
+```
+tapestry-skills-for-claude-code/
+├── pyproject.toml          # Dependencies (UV/pip)
+├── src/tapestry/           # Python utilities
+│   ├── validate_url.py
+│   ├── sanitize_filename.py
+│   ├── safe_download.py
+│   ├── vtt_to_text.py
+│   └── html_extractor.py
+├── tapestry/               # Master skill
+├── youtube-transcript/     # YouTube extraction skill
+├── article-extractor/      # Article extraction skill
+├── ship-learn-next/        # Action planning skill
+├── shared/references/      # Security documentation
+└── install.sh              # Installation script
+```
 
 ## Contributing
 
@@ -293,6 +271,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
+- **UV**: Fast Python package management from Astral
 - **Ship-Learn-Next framework**: Inspired by the ShipLearnNext GPT methodology
 - **yt-dlp**: Excellent tool for downloading YouTube content
 - **OpenAI Whisper**: State-of-the-art speech recognition
