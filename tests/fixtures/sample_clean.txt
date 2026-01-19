@@ -1,0 +1,10 @@
+Hello and welcome to this video
+Hello and welcome to this video about Python
+Hello and welcome to this video about Python programming
+Today we'll learn about testing
+Today we'll learn about testing with pytest
+Let's get started & dive right in
+First, we need to install pytest
+Run pip install pytest
+Run pip install pytest in your terminal
+That's all for today > thanks for watching!

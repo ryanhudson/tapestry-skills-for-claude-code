@@ -18,10 +18,11 @@ from urllib.request import urlopen, Request
 from urllib.error import URLError
 
 # Elements to skip entirely (don't capture any text inside)
+# Note: Don't include void elements (input) as they don't have closing tags
+# and would cause skip_depth to never decrement
 SKIP_ELEMENTS = {
     "script", "style", "nav", "header", "footer", "aside",
     "form", "noscript", "iframe", "svg", "canvas", "template",
-    "button", "input", "select", "textarea",
 }
 
 # Elements that contain main content

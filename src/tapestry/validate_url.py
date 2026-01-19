@@ -13,6 +13,7 @@ import sys
 from urllib.parse import urlparse
 
 # Private/internal IP patterns (SSRF protection)
+# Note: urlparse().hostname strips brackets from IPv6, so patterns match bare addresses
 BLOCKED_HOST_PATTERNS = [
     r"^localhost$",
     r"^127\.",
@@ -20,9 +21,9 @@ BLOCKED_HOST_PATTERNS = [
     r"^172\.(1[6-9]|2[0-9]|3[01])\.",
     r"^192\.168\.",
     r"^0\.0\.0\.0$",
-    r"^\[::1\]$",
-    r"^\[fe80:",
-    r"^169\.254\.",  # Link-local
+    r"^::1$",  # IPv6 localhost
+    r"^fe80:",  # IPv6 link-local
+    r"^169\.254\.",  # IPv4 link-local
     r"^fc00:",  # IPv6 unique local
     r"^fd00:",  # IPv6 unique local
 ]

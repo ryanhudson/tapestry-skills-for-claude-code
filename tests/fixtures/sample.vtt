@@ -1,0 +1,33 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:03.500
+Hello and welcome to this video
+
+00:00:02.000 --> 00:00:05.500
+Hello and welcome to this video about Python
+
+00:00:04.000 --> 00:00:08.000
+Hello and welcome to this video about Python programming
+
+00:00:07.000 --> 00:00:11.000
+Today we'll learn about <c>testing</c>
+
+00:00:10.000 --> 00:00:14.000
+Today we'll learn about testing with pytest
+
+00:00:13.000 --> 00:00:17.000
+Let's get started &amp; dive right in
+
+00:00:16.000 --> 00:00:20.000
+First, we need to install pytest
+
+00:00:19.000 --> 00:00:23.000
+<b>Run pip install pytest</b>
+
+00:00:22.000 --> 00:00:26.000
+Run pip install pytest in your terminal
+
+00:00:25.000 --> 00:00:29.000
+That's all for today &gt; thanks for watching!

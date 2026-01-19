@@ -1,0 +1,11 @@
+# How to Write Better Code
+
+How to Write Better Code
+
+Writing clean code is essential for maintainability. In this article, we'll explore best practices.
+
+First, always use meaningful variable names. Instead of x or temp, use descriptive names like userCount or totalPrice.
+
+Second, keep functions small and focused. Each function should do one thing well.
+
+Third, write tests for your code. Testing helps catch bugs early and documents expected behavior.
